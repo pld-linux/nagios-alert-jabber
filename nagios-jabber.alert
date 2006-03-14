@@ -1,0 +1,76 @@
+#!/usr/bin/python -u
+# arekm@pld-linux.org, 2006-01
+# glen@pld-linux.org, 2006-03-14
+# usage:
+#   jabber.alert -J from_jid -P password to_jid1 to_jid2 to_jid3
+
+import os
+import re
+import sys
+import getopt
+import string
+import time
+
+from pyxmpp.jid import JID
+from pyxmpp.message import Message
+from pyxmpp.jabber.client import JabberClient
+
+try:
+	opts, args = getopt.getopt(sys.argv[1:], "J:P:")
+except getopt.GetoptError, e:
+	print "%s: %s " % (sys.argv[0], e)
+	sys.exit(1)
+
+jid = None
+password = None
+
+for o, a in opts:
+	if o == '-J':
+		jid = a
+	if o == '-P':
+		password = a
+
+recpt = args
+
+if jid == None or password == None:
+	print "%s: jid (-J) and password (-P) are required" % sys.argv[0]
+	sys.exit(1)
+
+if recpt == None:
+	print "%s: recipient jids are required" % sys.argv[0]
+	sys.exit(1)
+
+
+subject = "Nagios alert"
+server = None
+port = None
+
+body = ""
+stdin_body = ""
+do_print = True
+for line in sys.stdin.readlines():
+	stdin_body += line
+
+body += stdin_body
+
+message_type = 'chat'
+
+jid = JID(jid)
+if not jid.resource:
+	jid = JID(jid.node, jid.domain, "Nagios")
+
+class Client(JabberClient):
+	def session_started(self):
+		for r in recpt:
+			jid_r = JID(r)
+			msg = Message(to_jid = jid_r, body = body, subject = subject, stanza_type = message_type)
+			self.stream.send(msg)
+		self.disconnect()
+c = Client(jid, password, server = server, port = port)
+c.connect()
+try:
+	c.loop(1)
+except:
+	print "problem: %s" % e
+	c.disconnect()
+c.disconnect()
