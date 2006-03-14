@@ -5,7 +5,6 @@ Release:	0.1
 License:	GPL
 Group:		Networking
 Source0:	nagios-jabber.alert
-# Source0-md5:	bee229fc60f7536f854d8f10f7f553f4
 Requires:	python-pyxmpp
 BuildRoot:	%{tmpdir}/%{name}-%{version}-root-%(id -u -n)
 
