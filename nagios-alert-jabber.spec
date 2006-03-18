@@ -1,4 +1,5 @@
 Summary:	Program to send (Nagios) alerts via jabber
+Summary(pl):	Program do wysy³ania alarmów (Nagiosa) przez jabbera
 Name:		nagios-alert-jabber
 Version:	1.0
 Release:	0.1
@@ -11,6 +12,10 @@ BuildRoot:	%{tmpdir}/%{name}-%{version}-root-%(id -u -n)
 %description
 nagios-jabber.alert is a program to send Nagios (or other)
 notifications over jabber protocol.
+
+%description -l pl
+nagios-jabber.alert to program do wysy³ania powiadomieñ Nagiosa (lub
+innych) po protokole jabber.
 
 %prep
 %setup -q -c -T
