@@ -70,7 +70,7 @@ c = Client(jid, password, server = server, port = port)
 c.connect()
 try:
 	c.loop(1)
-except:
-	print "problem: %s" % e
+except Exception, e:
+	print "ERROR: %s" % e
 	c.disconnect()
 c.disconnect()
