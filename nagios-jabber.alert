@@ -2,6 +2,7 @@
 # arekm@pld-linux.org, 2006-01
 # glen@pld-linux.org, 2006-03-14
 # glen@pld-linux.org,arekm@pld-linux.org, 2006-10-30 - added ssl support (for gmail.com)
+# glen@pld-linux.org 2006-11-03 - made it work with jabber.pld-linux.org again
 # usage:
 #   jabber.alert -J from_jid -P password to_jid1 to_jid2 to_jid3
 
@@ -69,7 +70,7 @@ class Client(JabberClient):
 			self.stream.send(msg)
 		self.disconnect()
 
-c = Client(jid, password, server = server, port = port, auth_methods = ['sasl:PLAIN'], tls_settings = TLSSettings(require = True, verify_peer = False))
+c = Client(jid, password, server = server, port = port, auth_methods = ['sasl:DIGEST-MD5', 'sasl:PLAIN'], tls_settings = TLSSettings(require = False, verify_peer = False))
 c.connect()
 try:
 	c.loop(1)
