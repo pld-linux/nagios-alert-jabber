@@ -3,8 +3,9 @@
 # glen@pld-linux.org, 2006-03-14
 # glen@pld-linux.org,arekm@pld-linux.org, 2006-10-30 - added ssl support (for gmail.com)
 # glen@pld-linux.org 2006-11-03 - made it work with jabber.pld-linux.org again
+# glen@pld-linux.org,arekm@pld-linux.org, 2006-11-13 - added config file support
 # usage:
-#   jabber.alert -J from_jid -P password to_jid1 to_jid2 to_jid3
+#   jabber.alert [-a account_id] [-J from_jid -P password] to_jid1 to_jid2 to_jid3
 
 import os
 import re
@@ -19,7 +20,7 @@ from pyxmpp.jabber.client import JabberClient
 from pyxmpp.streamtls import TLSSettings
 
 try:
-	opts, args = getopt.getopt(sys.argv[1:], "J:P:")
+	opts, args = getopt.getopt(sys.argv[1:], "J:P:a:")
 except getopt.GetoptError, e:
 	print "%s: %s " % (sys.argv[0], e)
 	sys.exit(1)
@@ -32,6 +33,14 @@ for o, a in opts:
 		jid = a
 	if o == '-P':
 		password = a
+	if o == '-a':
+		import ConfigParser
+
+		config = ConfigParser.ConfigParser()
+		config.read('/etc/nagios/jabber-notify.ini')
+
+		jid = config.get(a, 'jid')
+		password = config.get(a, 'password')
 
 recpt = args
 
