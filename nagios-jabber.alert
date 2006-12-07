@@ -81,6 +81,8 @@ class Client(JabberClient):
 		if (html == True):
 			import re
 			message = re.sub('<.*?>', '', body)
+			doc = libxml2.parseDoc('<body>' + body + '</body>')
+			doc_element = doc.getRootElement().children
 		else:
 			message = body
 
@@ -94,8 +96,7 @@ class Client(JabberClient):
 				xbody = node.newChild(None, "body", None)
 				html_ns = xbody.newNs('http://www.w3.org/1999/xhtml', None)
 				xbody.setNs(html_ns)
-				doc = libxml2.parseDoc('<p>' + body + '</p>')
-				xbody.addChild(doc.getRootElement())
+				xbody.addChildList(doc_element.docCopyNodeList(xbody.doc))
 
 			self.stream.send(msg)
 		self.disconnect()
