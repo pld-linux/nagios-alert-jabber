@@ -4,8 +4,9 @@
 # glen@pld-linux.org,arekm@pld-linux.org, 2006-10-30 - added ssl support (for gmail.com)
 # glen@pld-linux.org 2006-11-03 - made it work with jabber.pld-linux.org again
 # glen@pld-linux.org,arekm@pld-linux.org, 2006-11-13 - added config file support
+# glen@pld-linux.org, 2006-12-07 - added html messages support (-x), thx goes to to jajcus
 # usage:
-#   jabber.alert [-a account_id] [-J from_jid -P password] to_jid1 to_jid2 to_jid3
+#   jabber.alert [-x] [-a account_id] [-J from_jid -P password] to_jid1 to_jid2 to_jid3
 
 import os
 import re
@@ -13,6 +14,7 @@ import sys
 import getopt
 import string
 import time
+import libxml2
 
 from pyxmpp.jid import JID
 from pyxmpp.message import Message
@@ -20,15 +22,18 @@ from pyxmpp.jabber.client import JabberClient
 from pyxmpp.streamtls import TLSSettings
 
 try:
-	opts, args = getopt.getopt(sys.argv[1:], "J:P:a:")
+	opts, args = getopt.getopt(sys.argv[1:], "J:P:a:x")
 except getopt.GetoptError, e:
 	print "%s: %s " % (sys.argv[0], e)
 	sys.exit(1)
 
 jid = None
 password = None
+html = False
 
 for o, a in opts:
+	if o == '-x':
+		html = True
 	if o == '-J':
 		jid = a
 	if o == '-P':
@@ -73,9 +78,25 @@ if not jid.resource:
 
 class Client(JabberClient):
 	def session_started(self):
+		if (html == True):
+			import re
+			message = re.sub('<.*?>', '', body)
+		else:
+			message = body
+
 		for r in recpt:
+
 			jid_r = JID(r)
-			msg = Message(to_jid = jid_r, body = body, subject = subject, stanza_type = message_type)
+			msg = Message(to_jid = jid_r, body = message, subject = subject, stanza_type = message_type)
+
+			if (html == True):
+				node = msg.add_new_content('http://jabber.org/protocol/xhtml-im', 'html')
+				xbody = node.newChild(None, "body", None)
+				html_ns = xbody.newNs('http://www.w3.org/1999/xhtml', None)
+				xbody.setNs(html_ns)
+				doc = libxml2.parseDoc(body)
+				xbody.addChild(doc.getRootElement())
+
 			self.stream.send(msg)
 		self.disconnect()
 
