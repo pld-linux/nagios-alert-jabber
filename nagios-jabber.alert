@@ -94,7 +94,7 @@ class Client(JabberClient):
 				xbody = node.newChild(None, "body", None)
 				html_ns = xbody.newNs('http://www.w3.org/1999/xhtml', None)
 				xbody.setNs(html_ns)
-				doc = libxml2.parseDoc(body)
+				doc = libxml2.parseDoc('<p>' + body + '</p>')
 				xbody.addChild(doc.getRootElement())
 
 			self.stream.send(msg)
