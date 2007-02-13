@@ -1,5 +1,5 @@
 Summary:	Program to send (Nagios) alerts via jabber
-Summary(pl.UTF-8):   Program do wysyłania alarmów (Nagiosa) przez jabbera
+Summary(pl.UTF-8):	Program do wysyłania alarmów (Nagiosa) przez jabbera
 Name:		nagios-alert-jabber
 Version:	1.1
 Release:	2
