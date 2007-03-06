@@ -1,8 +1,8 @@
 Summary:	Program to send (Nagios) alerts via jabber
 Summary(pl):	Program do wysy³ania alarmów (Nagiosa) przez jabbera
 Name:		nagios-alert-jabber
-Version:	1.1
-Release:	2
+Version:	1.2
+Release:	1
 License:	GPL
 Group:		Networking
 Source0:	nagios-jabber.alert
