@@ -1,11 +1,11 @@
 #!/usr/bin/python -u
-# luzik@pld-linux.org, 2007-03 - added digest auth method(jabber.gda.pl)
 # arekm@pld-linux.org, 2006-01
 # glen@pld-linux.org, 2006-03-14
 # glen@pld-linux.org,arekm@pld-linux.org, 2006-10-30 - added ssl support (for gmail.com)
 # glen@pld-linux.org 2006-11-03 - made it work with jabber.pld-linux.org again
 # glen@pld-linux.org,arekm@pld-linux.org, 2006-11-13 - added config file support
 # glen@pld-linux.org, 2006-12-07 - added html messages support (-x), thx goes to to jajcus
+# luzik@pld-linux.org, 2007-03 - added digest auth method(jabber.gda.pl)
 # usage:
 #   jabber.alert [-x] [-a account_id] [-J from_jid -P password] to_jid1 to_jid2 to_jid3
 
