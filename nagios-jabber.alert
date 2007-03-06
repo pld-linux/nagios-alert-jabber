@@ -1,4 +1,5 @@
 #!/usr/bin/python -u
+# luzik@pld-linux.org, 2007-03 - added digest auth method(jabber.gda.pl)
 # arekm@pld-linux.org, 2006-01
 # glen@pld-linux.org, 2006-03-14
 # glen@pld-linux.org,arekm@pld-linux.org, 2006-10-30 - added ssl support (for gmail.com)
@@ -101,7 +102,7 @@ class Client(JabberClient):
 			self.stream.send(msg)
 		self.disconnect()
 
-c = Client(jid, password, server = server, port = port, auth_methods = ['sasl:DIGEST-MD5', 'sasl:PLAIN'], tls_settings = TLSSettings(require = False, verify_peer = False))
+c = Client(jid, password, server = server, port = port, auth_methods = ['sasl:DIGEST-MD5', 'sasl:PLAIN', 'digest'], tls_settings = TLSSettings(require = False, verify_peer = False))
 c.connect()
 try:
 	c.loop(1)
