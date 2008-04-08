@@ -71,6 +71,9 @@ for line in sys.stdin.readlines():
 
 body += stdin_body
 
+if len(body.strip()) == 0:
+	body = "(nagios-jabber.alert warning: missing message body)";
+
 message_type = 'chat'
 
 jid = JID(jid)
