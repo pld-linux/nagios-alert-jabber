@@ -54,7 +54,7 @@ if jid == None or password == None:
 	print "%s: jid (-J) and password (-P) are required" % sys.argv[0]
 	sys.exit(1)
 
-if recpt == None:
+if recpt == None or len(recpt) == 0:
 	print "%s: recipient jids are required" % sys.argv[0]
 	sys.exit(1)
 
