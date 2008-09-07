@@ -23,7 +23,7 @@ from pyxmpp.jabber.client import JabberClient
 from pyxmpp.streamtls import TLSSettings
 
 try:
-	opts, args = getopt.getopt(sys.argv[1:], "J:P:a:x")
+	opts, args = getopt.getopt(sys.argv[1:], "J:P:a:dx")
 except getopt.GetoptError, e:
 	print "%s: %s " % (sys.argv[0], e)
 	sys.exit(1)
@@ -31,8 +31,11 @@ except getopt.GetoptError, e:
 jid = None
 password = None
 html = False
+debug = False
 
 for o, a in opts:
+	if o == '-d':
+		debug = True
 	if o == '-x':
 		html = True
 	if o == '-J':
@@ -58,6 +61,10 @@ if recpt == None or len(recpt) == 0:
 	print "%s: recipient jids are required" % sys.argv[0]
 	sys.exit(1)
 
+if debug:
+	logger=logging.getLogger()
+	logger.addHandler(logging.StreamHandler())
+	logger.setLevel(logging.DEBUG)
 
 subject = "Nagios alert"
 server = None
