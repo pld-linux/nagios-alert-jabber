@@ -13,6 +13,7 @@ import os
 import re
 import sys
 import getopt
+import logging
 import string
 import time
 import libxml2
@@ -111,6 +112,11 @@ class Client(JabberClient):
 
 			self.stream.send(msg)
 		self.disconnect()
+
+	def stream_state_changed(self,state,arg):
+		if debug:
+			print "*** State changed: %s %r ***" % (state,arg)
+
 
 c = Client(jid, password, server = server, port = port, auth_methods = ['sasl:DIGEST-MD5', 'sasl:PLAIN', 'digest'], tls_settings = TLSSettings(require = False, verify_peer = False))
 c.connect()
