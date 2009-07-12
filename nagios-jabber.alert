@@ -6,8 +6,9 @@
 # glen@pld-linux.org,arekm@pld-linux.org, 2006-11-13 - added config file support
 # glen@pld-linux.org, 2006-12-07 - added html messages support (-x), thx goes to to jajcus
 # luzik@pld-linux.org, 2007-03 - added digest auth method(jabber.gda.pl)
+# arekm@pld-linux.org, 2009-07 - added fallback accounts support
 # usage:
-#   jabber.alert [-x] [-a account_id] [-J from_jid -P password] to_jid1 to_jid2 to_jid3
+#   jabber.alert [-x] [-a account_id][,otheraccount_id] [-J from_jid -P password] to_jid1 to_jid2 to_jid3
 
 import os
 import re
@@ -26,40 +27,45 @@ from pyxmpp.streamtls import TLSSettings
 try:
 	opts, args = getopt.getopt(sys.argv[1:], "J:P:a:dx")
 except getopt.GetoptError, e:
-	print "%s: %s " % (sys.argv[0], e)
+	print >> sys.stderr, "%s: %s " % (sys.argv[0], e)
 	sys.exit(1)
 
-jid = None
-password = None
+jids = []
 html = False
 debug = False
 
+tjid = None
 for o, a in opts:
 	if o == '-d':
 		debug = True
 	if o == '-x':
 		html = True
 	if o == '-J':
-		jid = a
+		tjid = a
 	if o == '-P':
-		password = a
+		jids.append({ 'jid': tjid, 'password': a })
 	if o == '-a':
 		import ConfigParser
 
 		config = ConfigParser.ConfigParser()
 		config.read('/etc/nagios/jabber-notify.ini')
 
-		jid = config.get(a, 'jid')
-		password = config.get(a, 'password')
+		for section in a.split(','):
+			jids.append({ 'jid': config.get(section, 'jid'), 'password': config.get(section, 'password')})
 
 recpt = args
 
-if jid == None or password == None:
-	print "%s: jid (-J) and password (-P) are required" % sys.argv[0]
+for section in jids:
+	if not section['jid'] or not section['password']:
+		print >> sys.stderr, "%s: jid (-J) and password (-P) are required for `%s'" % (sys.argv[0], section)
+		sys.exit(1)
+
+if not jids:
+	print >> sys.stderr, "%s: no configured jid accounts found" % sys.argv[0]
 	sys.exit(1)
 
-if recpt == None or len(recpt) == 0:
-	print "%s: recipient jids are required" % sys.argv[0]
+if not recpt:
+	print >> sys.stderr, "%s: recipient jids are required" % sys.argv[0]
 	sys.exit(1)
 
 if debug:
@@ -68,8 +74,6 @@ if debug:
 	logger.setLevel(logging.DEBUG)
 
 subject = "Nagios alert"
-server = None
-port = None
 
 body = ""
 stdin_body = ""
@@ -83,10 +87,6 @@ if len(body.strip()) == 0:
 	body = "(nagios-jabber.alert warning: missing message body)";
 
 message_type = 'chat'
-
-jid = JID(jid)
-if not jid.resource:
-	jid = JID(jid.node, jid.domain, "Nagios")
 
 class Client(JabberClient):
 	def session_started(self):
@@ -117,12 +117,27 @@ class Client(JabberClient):
 		if debug:
 			print "*** State changed: %s %r ***" % (state,arg)
 
+err = []
+for section in jids:
+	jid = JID(section['jid'])
+	if not jid.resource:
+		jid = JID(jid.node, jid.domain, "Nagios")
 
-c = Client(jid, password, server = server, port = port, auth_methods = ['sasl:DIGEST-MD5', 'sasl:PLAIN', 'digest'], tls_settings = TLSSettings(require = False, verify_peer = False))
-c.connect()
-try:
-	c.loop(1)
-except Exception, e:
-	print "ERROR: %s" % e
-	c.disconnect()
-c.disconnect()
+	c = Client(jid, section['password'], auth_methods = ['sasl:DIGEST-MD5', 'sasl:PLAIN', 'digest'],
+			tls_settings = TLSSettings(require = False, verify_peer = False))
+	try:
+		c.connect()
+		try:
+			c.loop(1)
+		except Exception, e:
+			err.append("ERROR1: %s: %s" % (section['jid'], e))
+			c.disconnect()
+			continue
+		c.disconnect()
+		# stop after first succeeded attempt
+		sys.exit(0)
+	except Exception, e:
+		err.append("ERROR2: %s: %s" % (section['jid'], e))
+
+print >> sys.stderr, "\n".join(err)
+sys.exit(1)
