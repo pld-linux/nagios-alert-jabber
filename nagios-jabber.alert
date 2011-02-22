@@ -15,6 +15,7 @@ import re
 import sys
 import getopt
 import logging
+import socket
 import string
 import time
 import libxml2
@@ -23,6 +24,8 @@ from pyxmpp.jid import JID
 from pyxmpp.message import Message
 from pyxmpp.jabber.client import JabberClient
 from pyxmpp.streamtls import TLSSettings
+
+socket.setdefaulttimeout(60.0)
 
 try:
 	opts, args = getopt.getopt(sys.argv[1:], "J:P:a:dx")
