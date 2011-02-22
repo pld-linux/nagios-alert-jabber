@@ -8,7 +8,7 @@
 # luzik@pld-linux.org, 2007-03 - added digest auth method(jabber.gda.pl)
 # arekm@pld-linux.org, 2009-07 - added fallback accounts support
 # usage:
-#   jabber.alert [-x] [-a account_id][,otheraccount_id] [-J from_jid -P password] to_jid1 to_jid2 to_jid3
+#   jabber.alert [-x] [-a account_id][,otheraccount_id] [-t timeout ] [-J from_jid -P password] to_jid1 to_jid2 to_jid3
 
 import os
 import re
@@ -25,10 +25,8 @@ from pyxmpp.message import Message
 from pyxmpp.jabber.client import JabberClient
 from pyxmpp.streamtls import TLSSettings
 
-socket.setdefaulttimeout(60.0)
-
 try:
-	opts, args = getopt.getopt(sys.argv[1:], "J:P:a:dx")
+	opts, args = getopt.getopt(sys.argv[1:], "J:P:a:dt:x")
 except getopt.GetoptError, e:
 	print >> sys.stderr, "%s: %s " % (sys.argv[0], e)
 	sys.exit(1)
@@ -36,11 +34,14 @@ except getopt.GetoptError, e:
 jids = []
 html = False
 debug = False
+timeout = 20
 
 tjid = None
 for o, a in opts:
 	if o == '-d':
 		debug = True
+	if o == '-t':
+		timeout = float(a)
 	if o == '-x':
 		html = True
 	if o == '-J':
@@ -55,6 +56,8 @@ for o, a in opts:
 
 		for section in a.split(','):
 			jids.append({ 'jid': config.get(section, 'jid'), 'password': config.get(section, 'password')})
+
+socket.setdefaulttimeout(timeout)
 
 recpt = args
 
