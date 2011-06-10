@@ -127,7 +127,7 @@ err = []
 for section in jids:
 	jid = JID(section['jid'])
 	if not jid.resource:
-		jid = JID(jid.node, jid.domain, "Nagios")
+		jid = JID(jid.node, jid.domain, "Nagios/%d" % os.getpid())
 
 	c = Client(jid, section['password'], auth_methods = ['sasl:DIGEST-MD5', 'sasl:PLAIN', 'digest'],
 			tls_settings = TLSSettings(require = False, verify_peer = False))
