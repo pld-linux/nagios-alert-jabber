@@ -107,7 +107,8 @@ class Client(JabberClient):
 		for r in recpt:
 
 			jid_r = JID(r)
-			msg = Message(to_jid = jid_r, body = message, subject = subject, stanza_type = message_type)
+			msg = Message(to_jid = jid_r, body = message, subject = subject,
+					stanza_type = message_type, thread = "Nagios")
 
 			if (html == True):
 				node = msg.add_new_content('http://jabber.org/protocol/xhtml-im', 'html')
