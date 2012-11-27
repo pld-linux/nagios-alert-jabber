@@ -11,6 +11,7 @@
 #   jabber.alert [-x] [-a account_id][,otheraccount_id] [-t timeout ] [-J from_jid -P password] to_jid1 to_jid2 to_jid3
 
 import os
+import hashlib
 import re
 import sys
 import getopt
@@ -94,6 +95,12 @@ if len(body.strip()) == 0:
 
 message_type = 'chat'
 
+class XMPPStreamError(Exception):
+	def __init__(self, msg):
+		self.msg = msg
+	def __str__(self):
+		return self.msg
+
 class Client(JabberClient):
 	def session_started(self):
 		if (html == True):
@@ -105,7 +112,6 @@ class Client(JabberClient):
 			message = body
 
 		for r in recpt:
-
 			jid_r = JID(r)
 			msg = Message(to_jid = jid_r, body = message, subject = subject,
 					stanza_type = message_type, thread = "Nagios")
@@ -124,27 +130,46 @@ class Client(JabberClient):
 		if debug:
 			print "*** State changed: %s %r ***" % (state,arg)
 
+	def stream_error(self,err):
+		raise XMPPStreamError(err.get_message())
+
+
 err = []
 for section in jids:
-	jid = JID(section['jid'])
-	if not jid.resource:
-		jid = JID(jid.node, jid.domain, "Nagios/%d" % os.getpid())
+	for attempt in ('first', 'second'):
+		jid = JID(section['jid'])
+		resource = "Nagios/" + hashlib.md5(''.join(recpt)).hexdigest()[:10]
+		if attempt == 'second':
+			# if something went wrong the second time around, it's
+			# most likely a resource name conflict on login, so let's
+			# wait a bit, randomize the resource name and try again
+			resource = resource + '/' + repr(os.getpid())
+			time.sleep(0.8)
+		if not jid.resource:
+			jid = JID(jid.node, jid.domain, resource)
 
-	c = Client(jid, section['password'], auth_methods = ['sasl:DIGEST-MD5', 'sasl:PLAIN', 'digest'],
-			tls_settings = TLSSettings(require = False, verify_peer = False))
-	try:
-		c.connect()
+		c = Client(jid, section['password'], auth_methods = ['sasl:DIGEST-MD5', 'sasl:PLAIN', 'digest'],
+				tls_settings = TLSSettings(require = False, verify_peer = False))
 		try:
-			c.loop(1)
-		except Exception, e:
-			err.append("ERROR1: %s: %s" % (section['jid'], e))
+			c.connect()
+			try:
+				c.loop(1)
+			except XMPPStreamError, e:
+				# Most likely a duplicate stream problem
+				# don't log anything, just try again
+				c.disconnect()
+				continue
+			except Exception, e:
+				err.append("ERROR1: %s: %s" % (section['jid'], e))
+				c.disconnect()
+				# don't try another attempt, jump straigt to
+				# another section
+				break
 			c.disconnect()
-			continue
-		c.disconnect()
-		# stop after first succeeded attempt
-		sys.exit(0)
-	except Exception, e:
-		err.append("ERROR2: %s: %s" % (section['jid'], e))
+			# stop after first successful attempt at sending the msg
+			sys.exit(0)
+		except Exception, e:
+			err.append("ERROR2: %s: %s" % (section['jid'], e))
 
 print >> sys.stderr, "\n".join(err)
 sys.exit(1)
