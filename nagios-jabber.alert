@@ -39,6 +39,8 @@ timeout = 20
 cfg = "/etc/nagios/jabber-notify.ini"
 tjid = None
 for o, a in opts:
+	if o == '-c':
+		cfg = a
 	if o == '-d':
 		debug = True
 	if o == '-t':
