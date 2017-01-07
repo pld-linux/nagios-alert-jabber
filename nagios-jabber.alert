@@ -38,7 +38,10 @@ debug = False
 timeout = 20
 cfg = "/etc/nagios/jabber-notify.ini"
 tjid = None
+body = ""
 for o, a in opts:
+    if o == '-b':
+        body = a
     if o == '-c':
         cfg = a
     if o == '-d':
@@ -84,13 +87,12 @@ if debug:
 
 subject = "Nagios alert"
 
-body = ""
-stdin_body = ""
-do_print = True
-for line in sys.stdin.readlines():
-    stdin_body += line
+if not body:
+    stdin_body = ""
+    for line in sys.stdin.readlines():
+        stdin_body += line
 
-body += stdin_body
+    body += stdin_body
 
 if len(body.strip()) == 0:
     body = "(nagios-jabber.alert warning: missing message body)";
