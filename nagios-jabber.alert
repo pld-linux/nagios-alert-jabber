@@ -27,7 +27,7 @@ from pyxmpp.jabber.client import JabberClient
 from pyxmpp.streamtls import TLSSettings
 
 try:
-    opts, args = getopt.getopt(sys.argv[1:], "J:P:a:b:c:dt:x")
+    opts, args = getopt.getopt(sys.argv[1:], "J:P:a:b:c:ds:t:x")
 except getopt.GetoptError, e:
     print >> sys.stderr, "%s: %s " % (sys.argv[0], e)
     sys.exit(1)
@@ -39,6 +39,7 @@ timeout = 20
 cfg = "/etc/nagios/jabber-notify.ini"
 tjid = None
 body = ""
+subject = "Nagios alert"
 for o, a in opts:
     if o == '-b':
         body = a
@@ -54,6 +55,8 @@ for o, a in opts:
         tjid = a
     if o == '-P':
         jids.append({ 'jid': tjid, 'password': a })
+    if o == '-s':
+        subject = a
     if o == '-a':
         import ConfigParser
 
@@ -84,8 +87,6 @@ if debug:
     logger=logging.getLogger()
     logger.addHandler(logging.StreamHandler())
     logger.setLevel(logging.DEBUG)
-
-subject = "Nagios alert"
 
 if not body:
     stdin_body = ""
