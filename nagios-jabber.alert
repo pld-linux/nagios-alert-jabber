@@ -27,10 +27,10 @@ from pyxmpp.jabber.client import JabberClient
 from pyxmpp.streamtls import TLSSettings
 
 try:
-	opts, args = getopt.getopt(sys.argv[1:], "J:P:a:c:dt:x")
+    opts, args = getopt.getopt(sys.argv[1:], "J:P:a:b:c:dt:x")
 except getopt.GetoptError, e:
-	print >> sys.stderr, "%s: %s " % (sys.argv[0], e)
-	sys.exit(1)
+    print >> sys.stderr, "%s: %s " % (sys.argv[0], e)
+    sys.exit(1)
 
 jids = []
 html = False
@@ -39,48 +39,48 @@ timeout = 20
 cfg = "/etc/nagios/jabber-notify.ini"
 tjid = None
 for o, a in opts:
-	if o == '-c':
-		cfg = a
-	if o == '-d':
-		debug = True
-	if o == '-t':
-		timeout = float(a)
-	if o == '-x':
-		html = True
-	if o == '-J':
-		tjid = a
-	if o == '-P':
-		jids.append({ 'jid': tjid, 'password': a })
-	if o == '-a':
-		import ConfigParser
+    if o == '-c':
+        cfg = a
+    if o == '-d':
+        debug = True
+    if o == '-t':
+        timeout = float(a)
+    if o == '-x':
+        html = True
+    if o == '-J':
+        tjid = a
+    if o == '-P':
+        jids.append({ 'jid': tjid, 'password': a })
+    if o == '-a':
+        import ConfigParser
 
-		config = ConfigParser.ConfigParser()
-		config.read(cfg)
+        config = ConfigParser.ConfigParser()
+        config.read(cfg)
 
-		for section in a.split(','):
-			jids.append({ 'jid': config.get(section, 'jid'), 'password': config.get(section, 'password')})
+        for section in a.split(','):
+            jids.append({ 'jid': config.get(section, 'jid'), 'password': config.get(section, 'password')})
 
 socket.setdefaulttimeout(timeout)
 
 recpt = args
 
 for section in jids:
-	if not section['jid'] or not section['password']:
-		print >> sys.stderr, "%s: jid (-J) and password (-P) are required for `%s'" % (sys.argv[0], section)
-		sys.exit(1)
+    if not section['jid'] or not section['password']:
+        print >> sys.stderr, "%s: jid (-J) and password (-P) are required for `%s'" % (sys.argv[0], section)
+        sys.exit(1)
 
 if not jids:
-	print >> sys.stderr, "%s: no configured jid accounts found" % sys.argv[0]
-	sys.exit(1)
+    print >> sys.stderr, "%s: no configured jid accounts found" % sys.argv[0]
+    sys.exit(1)
 
 if not recpt:
-	print >> sys.stderr, "%s: recipient jids are required" % sys.argv[0]
-	sys.exit(1)
+    print >> sys.stderr, "%s: recipient jids are required" % sys.argv[0]
+    sys.exit(1)
 
 if debug:
-	logger=logging.getLogger()
-	logger.addHandler(logging.StreamHandler())
-	logger.setLevel(logging.DEBUG)
+    logger=logging.getLogger()
+    logger.addHandler(logging.StreamHandler())
+    logger.setLevel(logging.DEBUG)
 
 subject = "Nagios alert"
 
@@ -88,90 +88,90 @@ body = ""
 stdin_body = ""
 do_print = True
 for line in sys.stdin.readlines():
-	stdin_body += line
+    stdin_body += line
 
 body += stdin_body
 
 if len(body.strip()) == 0:
-	body = "(nagios-jabber.alert warning: missing message body)";
+    body = "(nagios-jabber.alert warning: missing message body)";
 
 message_type = 'chat'
 
 class XMPPStreamError(Exception):
-	def __init__(self, msg):
-		self.msg = msg
-	def __str__(self):
-		return self.msg
+    def __init__(self, msg):
+        self.msg = msg
+    def __str__(self):
+        return self.msg
 
 class Client(JabberClient):
-	def session_started(self):
-		if (html == True):
-			import re
-			message = re.sub('<.*?>', '', body)
-			doc = libxml2.parseDoc('<body>' + body + '</body>')
-			doc_element = doc.getRootElement().children
-		else:
-			message = body
+    def session_started(self):
+        if (html == True):
+            import re
+            message = re.sub('<.*?>', '', body)
+            doc = libxml2.parseDoc('<body>' + body + '</body>')
+            doc_element = doc.getRootElement().children
+        else:
+            message = body
 
-		for r in recpt:
-			jid_r = JID(r)
-			msg = Message(to_jid = jid_r, body = message, subject = subject,
-					stanza_type = message_type, thread = "Nagios")
+        for r in recpt:
+            jid_r = JID(r)
+            msg = Message(to_jid = jid_r, body = message, subject = subject,
+                            stanza_type = message_type, thread = "Nagios")
 
-			if (html == True):
-				node = msg.add_new_content('http://jabber.org/protocol/xhtml-im', 'html')
-				xbody = node.newChild(None, "body", None)
-				html_ns = xbody.newNs('http://www.w3.org/1999/xhtml', None)
-				xbody.setNs(html_ns)
-				xbody.addChildList(doc_element.docCopyNodeList(xbody.doc))
+            if (html == True):
+                node = msg.add_new_content('http://jabber.org/protocol/xhtml-im', 'html')
+                xbody = node.newChild(None, "body", None)
+                html_ns = xbody.newNs('http://www.w3.org/1999/xhtml', None)
+                xbody.setNs(html_ns)
+                xbody.addChildList(doc_element.docCopyNodeList(xbody.doc))
 
-			self.stream.send(msg)
-		self.disconnect()
+            self.stream.send(msg)
+        self.disconnect()
 
-	def stream_state_changed(self,state,arg):
-		if debug:
-			print "*** State changed: %s %r ***" % (state,arg)
+    def stream_state_changed(self,state,arg):
+        if debug:
+            print "*** State changed: %s %r ***" % (state,arg)
 
-	def stream_error(self,err):
-		raise XMPPStreamError(err.get_message())
+    def stream_error(self,err):
+        raise XMPPStreamError(err.get_message())
 
 
 err = []
 for section in jids:
-	for attempt in ('first', 'second'):
-		jid = JID(section['jid'])
-		resource = "Nagios/" + hashlib.md5(''.join(recpt)).hexdigest()[:10]
-		if attempt == 'second':
-			# if something went wrong the second time around, it's
-			# most likely a resource name conflict on login, so let's
-			# wait a bit, randomize the resource name and try again
-			resource = resource + '/' + repr(os.getpid())
-			time.sleep(0.8)
-		if not jid.resource:
-			jid = JID(jid.node, jid.domain, resource)
+    for attempt in ('first', 'second'):
+        jid = JID(section['jid'])
+        resource = "Nagios/" + hashlib.md5(''.join(recpt)).hexdigest()[:10]
+        if attempt == 'second':
+            # if something went wrong the second time around, it's
+            # most likely a resource name conflict on login, so let's
+            # wait a bit, randomize the resource name and try again
+            resource = resource + '/' + repr(os.getpid())
+            time.sleep(0.8)
+        if not jid.resource:
+            jid = JID(jid.node, jid.domain, resource)
 
-		c = Client(jid, section['password'], auth_methods = ['sasl:DIGEST-MD5', 'sasl:PLAIN', 'digest'],
-				tls_settings = TLSSettings(require = False, verify_peer = False))
-		try:
-			c.connect()
-			try:
-				c.loop(1)
-			except XMPPStreamError, e:
-				# Most likely a duplicate stream problem
-				# don't log anything, just try again
-				c.disconnect()
-				continue
-			except Exception, e:
-				err.append("ERROR1: %s: %s" % (section['jid'], e))
-				c.disconnect()
-				# don't try another attempt, jump straigt to
-				# another section
-				break
-			c.disconnect()
-			# stop after first successful attempt at sending the msg
-			sys.exit(0)
-		except Exception, e:
-			err.append("ERROR2: %s: %s" % (section['jid'], e))
+        c = Client(jid, section['password'], auth_methods = ['sasl:DIGEST-MD5', 'sasl:PLAIN', 'digest'],
+                        tls_settings = TLSSettings(require = False, verify_peer = False))
+        try:
+            c.connect()
+            try:
+                c.loop(1)
+            except XMPPStreamError, e:
+                # Most likely a duplicate stream problem
+                # don't log anything, just try again
+                c.disconnect()
+                continue
+            except Exception, e:
+                err.append("ERROR1: %s: %s" % (section['jid'], e))
+                c.disconnect()
+                # don't try another attempt, jump straigt to
+                # another section
+                break
+            c.disconnect()
+            # stop after first successful attempt at sending the msg
+            sys.exit(0)
+        except Exception, e:
+            err.append("ERROR2: %s: %s" % (section['jid'], e))
 
 print >> sys.stderr, "\n".join(err)
 sys.exit(1)
