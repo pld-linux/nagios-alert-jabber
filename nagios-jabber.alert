@@ -42,7 +42,7 @@ body = ""
 subject = "Nagios alert"
 for o, a in opts:
     if o == '-b':
-        body = a
+        body += a
     if o == '-c':
         cfg = a
     if o == '-d':
