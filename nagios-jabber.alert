@@ -1,4 +1,4 @@
-#!/usr/bin/python -u
+#!/usr/bin/python2 -u
 # arekm@pld-linux.org, 2006-01
 # glen@pld-linux.org, 2006-03-14
 # glen@pld-linux.org,arekm@pld-linux.org, 2006-10-30 - added ssl support (for gmail.com)
