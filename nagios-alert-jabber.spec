@@ -1,15 +1,14 @@
 Summary:	Program to send (Nagios) alerts via jabber
 Summary(pl.UTF-8):	Program do wysyłania alarmów (Nagiosa) przez jabbera
 Name:		nagios-alert-jabber
-Version:	1.2
-Release:	11
+Version:	1.3
+Release:	1
 License:	GPL
 Group:		Networking
 Source0:	nagios-jabber.alert
 Requires:	cyrus-sasl-plain
 Requires:	nagios-common
-Requires:	python-M2Crypto
-Requires:	python-pyxmpp
+Requires:	python3-pyxmpp2
 BuildRoot:	%{tmpdir}/%{name}-%{version}-root-%(id -u -n)
 
 %define		_sysconfdir	/etc/nagios

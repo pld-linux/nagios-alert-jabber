@@ -1,12 +1,4 @@
-#!/usr/bin/python2 -u
-# arekm@pld-linux.org, 2006-01
-# glen@pld-linux.org, 2006-03-14
-# glen@pld-linux.org,arekm@pld-linux.org, 2006-10-30 - added ssl support (for gmail.com)
-# glen@pld-linux.org 2006-11-03 - made it work with jabber.pld-linux.org again
-# glen@pld-linux.org,arekm@pld-linux.org, 2006-11-13 - added config file support
-# glen@pld-linux.org, 2006-12-07 - added html messages support (-x), thx goes to to jajcus
-# luzik@pld-linux.org, 2007-03 - added digest auth method(jabber.gda.pl)
-# arekm@pld-linux.org, 2009-07 - added fallback accounts support
+#!/usr/bin/python3 -u
 # usage:
 #   jabber.alert [-x] [-c config] [-a account_id][,otheraccount_id] [-t timeout ] [-J from_jid -P password] to_jid1 to_jid2 to_jid3
 
@@ -16,20 +8,23 @@ import re
 import sys
 import getopt
 import logging
+import signal
 import socket
 import string
 import time
 import libxml2
 
-from pyxmpp.jid import JID
-from pyxmpp.message import Message
-from pyxmpp.jabber.client import JabberClient
-from pyxmpp.streamtls import TLSSettings
+from pyxmpp2.jid import JID
+from pyxmpp2.message import Message
+from pyxmpp2.client import Client
+from pyxmpp2.settings import XMPPSettings
+from pyxmpp2.interfaces import EventHandler, event_handler, QUIT
+from pyxmpp2.streamevents import AuthorizedEvent, DisconnectedEvent
 
 try:
     opts, args = getopt.getopt(sys.argv[1:], "J:P:a:b:c:ds:t:x")
-except getopt.GetoptError, e:
-    print >> sys.stderr, "%s: %s " % (sys.argv[0], e)
+except getopt.GetoptError as e:
+    print("%s: %s " % (sys.argv[0], e), file=sys.stderr)
     sys.exit(1)
 
 jids = []
@@ -58,9 +53,9 @@ for o, a in opts:
     if o == '-s':
         subject = a
     if o == '-a':
-        import ConfigParser
+        import configparser
 
-        config = ConfigParser.ConfigParser()
+        config = configparser.ConfigParser()
         config.read(cfg)
 
         for section in a.split(','):
@@ -72,15 +67,15 @@ recpt = args
 
 for section in jids:
     if not section['jid'] or not section['password']:
-        print >> sys.stderr, "%s: jid (-J) and password (-P) are required for `%s'" % (sys.argv[0], section)
+        print("%s: jid (-J) and password (-P) are required for `%s'" % (sys.argv[0], section), file=sys.stderr)
         sys.exit(1)
 
 if not jids:
-    print >> sys.stderr, "%s: no configured jid accounts found" % sys.argv[0]
+    print("%s: no configured jid accounts found" % sys.argv[0], file=sys.stderr)
     sys.exit(1)
 
 if not recpt:
-    print >> sys.stderr, "%s: recipient jids are required" % sys.argv[0]
+    print("%s: recipient jids are required" % sys.argv[0], file=sys.stderr)
     sys.exit(1)
 
 if debug:
@@ -98,16 +93,29 @@ if not body:
 if len(body.strip()) == 0:
     body = "(nagios-jabber.alert warning: missing message body)";
 
-message_type = 'chat'
+class NagiosHandler(EventHandler):
+    """Echo Bot implementation."""
+    def __init__(self):
+        signal.signal(signal.SIGINT, self.exit_gracefully)
+        signal.signal(signal.SIGTERM, self.exit_gracefully)
 
-class XMPPStreamError(Exception):
-    def __init__(self, msg):
-        self.msg = msg
-    def __str__(self):
-        return self.msg
+    def run(self):
+        """Request client connection and start the main loop."""
+        self.client.connect()
+        self.client.run()
 
-class Client(JabberClient):
-    def session_started(self):
+    def exit_gracefully(self, signum, frame):
+        logging.info(u"Received signal {0}".format(signum))
+        self.client.main_loop.quit()
+
+    def disconnect(self):
+        """Request disconnection and let the main loop run for a 2 more
+        seconds for graceful disconnection."""
+        self.client.disconnect()
+        self.client.run(timeout = 2)
+
+    @event_handler(AuthorizedEvent)
+    def handle_authorized(self, event):
         if (html == True):
             import re
             message = re.sub('<.*?>', '', body)
@@ -119,7 +127,7 @@ class Client(JabberClient):
         for r in recpt:
             jid_r = JID(r)
             msg = Message(to_jid = jid_r, body = message, subject = subject,
-                            stanza_type = message_type, thread = "Nagios")
+                            stanza_type = 'chat', thread = "Nagios")
 
             if (html == True):
                 node = msg.add_new_content('http://jabber.org/protocol/xhtml-im', 'html')
@@ -128,22 +136,24 @@ class Client(JabberClient):
                 xbody.setNs(html_ns)
                 xbody.addChildList(doc_element.docCopyNodeList(xbody.doc))
 
-            self.stream.send(msg)
-        self.disconnect()
+            event.stream.send(msg)
+        event.stream.disconnect()
 
-    def stream_state_changed(self,state,arg):
-        if debug:
-            print "*** State changed: %s %r ***" % (state,arg)
+    @event_handler(DisconnectedEvent)
+    def handle_disconnected(self, event):
+        """Quit the main loop upon disconnection."""
+        return QUIT
 
-    def stream_error(self,err):
-        raise XMPPStreamError(err.get_message())
-
+    @event_handler()
+    def handle_all(self, event):
+        """Log all events."""
+        logging.info(u"-- {0}".format(event))
 
 err = []
 for section in jids:
     for attempt in ('first', 'second'):
         jid = JID(section['jid'])
-        resource = "Nagios/" + hashlib.md5(''.join(recpt)).hexdigest()[:10]
+        resource = "Nagios/" + hashlib.md5(''.join(recpt).encode('utf-8')).hexdigest()[:10]
         if attempt == 'second':
             # if something went wrong the second time around, it's
             # most likely a resource name conflict on login, so let's
@@ -151,30 +161,38 @@ for section in jids:
             resource = resource + '/' + repr(os.getpid())
             time.sleep(0.8)
         if not jid.resource:
-            jid = JID(jid.node, jid.domain, resource)
+            jid = JID(jid.local, jid.domain, resource)
 
-        c = Client(jid, section['password'], auth_methods = ['sasl:DIGEST-MD5', 'sasl:PLAIN', 'digest'],
-                        tls_settings = TLSSettings(require = False, verify_peer = False))
+        settings = XMPPSettings({
+                            u"password": section['password'],
+                            u"software_name": "Nagios notify jabber",
+                            u"starttls": True,
+                            u"tls_verify_peer": True,
+                            u"tls_cacert_file": "/etc/pki/tls/certs/ca-bundle.crt"
+                            })
+
+        handler = NagiosHandler()
         try:
-            c.connect()
+            c = Client(jid, [handler], settings)
             try:
-                c.loop(1)
-            except XMPPStreamError, e:
-                # Most likely a duplicate stream problem
-                # don't log anything, just try again
+                c.connect()
+                c.run()
+            except KeyboardInterrupt:
                 c.disconnect()
-                continue
-            except Exception, e:
-                err.append("ERROR1: %s: %s" % (section['jid'], e))
-                c.disconnect()
+                logging.info(u"Disconnected due to KeyboardInterrupt")
+                sys.exit(0)
+            except Exception as e:
+                err.append("ERROR1: %s: %s" % (jid, e))
                 # don't try another attempt, jump straigt to
                 # another section
                 break
-            c.disconnect()
-            # stop after first successful attempt at sending the msg
-            sys.exit(0)
-        except Exception, e:
-            err.append("ERROR2: %s: %s" % (section['jid'], e))
+            else:
+                c.disconnect()
+                logging.info(u"Disconnected")
+                # stop after first successful attempt at sending the msg
+                sys.exit(0)
+        except Exception as e:
+            err.append("ERROR2: %s: %s" % (jid, e))
 
-print >> sys.stderr, "\n".join(err)
+print("\n".join(err), file=sys.stderr)
 sys.exit(1)
